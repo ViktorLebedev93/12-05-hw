@@ -32,8 +32,14 @@
 
 Запрос
 ```
-
+SELECT
+    (SUM(index_length) / SUM(data_length + index_length)) * 100 AS index_to_table_ratio
+FROM
+    information_schema.TABLES
+WHERE
+    table_schema = 'sakila'; 
 ```
+<img src="img/img1.jpg">
 ---
 
 ### Задание 2
