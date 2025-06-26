@@ -57,9 +57,42 @@ where date(p.payment_date) = '2005-07-30' and p.payment_date = r.rental_date and
 
 ### Решение 2
 
-Запрос
+Создаем индексы
 ```
+CREATE INDEX idx_payment_rental_id ON payment (rental_id);
+CREATE INDEX idx_rental_customer_id ON rental (customer_id);
+CREATE INDEX idx_rental_inventory_id ON rental (inventory_id);
+CREATE INDEX idx_inventory_film_id ON inventory (film_id);
+CREATE INDEX idx_payment_payment_date ON payment (payment_date);
 ```
+
+Оптимизированный запрос
+```
+SELECT DISTINCT
+    CONCAT(c.last_name, ' ', c.first_name) AS customer_name,
+    SUM(p.amount) OVER (PARTITION BY c.customer_id, f.title) AS total_amount_per_film
+FROM
+    payment p
+INNER JOIN
+    rental r ON p.rental_id = r.rental_id  -- Corrected join: using rental_id
+INNER JOIN
+    customer c ON r.customer_id = c.customer_id
+INNER JOIN
+    inventory i ON r.inventory_id = i.inventory_id
+INNER JOIN
+    film f ON i.film_id = f.film_id  -- Added explicit link between inventory and film
+WHERE
+    DATE(p.payment_date) = '2005-07-30';
+```
+Изменения и пояснения:
+
+1. Явные JOIN’ы (INNER JOIN): Заменили неявные JOIN’ы на явные INNER JOIN для улучшения читаемости и производительности. INNER JOIN возвращает только те строки, для которых есть соответствия в обеих таблицах.
+2. Правильное условие соединения между payment и rental: Предполагается, что таблицы payment и rental связаны через rental_id. Использование p.rental_id = r.rental_id является логичным и стандартным. Если связь между payment и rental осуществляется другим способом (например, через payment_id), необходимо скорректировать это условие.
+3. Добавлена явная связь между inventory и film: Условие f.film_id = i.film_id обеспечивает, что мы учитываем только те фильмы, которые действительно есть в инвентаре, который был взят в аренду.
+4. Псевдонимы таблиц: Использование псевдонимов (p, r, c, i, f) делает запрос более коротким и читаемым.
+5. AS для имени столбца: Добавлено AS для псевдонима столбца concat(c.last_name, ' ', c.first_name) для customer_name. Аналогично total_amount_per_film.
+6. Сохранено условие DATE(p.payment_date) = '2005-07-30': Условие фильтрации по дате платежа сохранено, так как оно соответствует заданию. Однако, если требуется другая логика фильтрации (например, получить платежи за определенный период), его нужно будет изменить.
+
 ---
 
 ### Задание 3*
